@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Food Order</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🍜%3C/text%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body class="is-guest">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-icon" aria-hidden="true">🍜</span>
+        <div>
+          <h1>Food Order</h1>
+          <p class="subtitle">ระบบสั่งอาหารออนไลน์ (ชุดฝึกสอบปลายภาค 88736065)</p>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <button type="button" id="health-pill" class="pill pill-muted" title="กดเพื่อตรวจสถานะอีกครั้ง">
+          กำลังตรวจสถานะ...
+        </button>
+        <!-- สถานะการเข้าสู่ระบบ (app.js renderAuth) -->
+        <div id="user-box" class="user-box">
+          <button type="button" id="login-open" class="btn btn-primary btn-small guest-only">เข้าสู่ระบบ</button>
+          <span id="user-name" class="user-name requires-auth"></span>
+          <button type="button" id="logout" class="btn btn-ghost btn-small requires-auth">ออกจากระบบ</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="layout">
+      <div class="side">
+        <!-- ===== เมนูอาหาร: GET /api/v1/menu?page=&limit=&available= (โจทย์ 3) ===== -->
+        <section class="panel" aria-labelledby="menu-title">
+          <div class="panel-head">
+            <h2 id="menu-title">เมนูอาหาร</h2>
+            <div class="toolbar">
+              <label class="sr-only" for="menu-filter">กรองเมนู</label>
+              <select id="menu-filter">
+                <option value="">ทุกเมนู</option>
+                <option value="true">เฉพาะที่พร้อมขาย</option>
+                <option value="false">เฉพาะที่ไม่พร้อมขาย</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="menu-status" class="status" role="status" aria-live="polite"></div>
+          <ul id="menu-list" class="game-list"></ul>
+
+          <nav id="menu-pager" class="pager" aria-label="เปลี่ยนหน้ารายการเมนู" hidden>
+            <button type="button" id="page-prev" class="btn btn-ghost btn-small">‹ ก่อนหน้า</button>
+            <span id="page-info" class="pager-info" aria-live="polite"></span>
+            <button type="button" id="page-next" class="btn btn-ghost btn-small">ถัดไป ›</button>
+            <label class="pager-size">
+              หน้าละ
+              <select id="page-size">
+                <option value="5" selected>5</option>
+                <option value="10">10</option>
+                <option value="20">20</option>
+              </select>
+              รายการ
+            </label>
+          </nav>
+        </section>
+
+        <!-- ===== คำสั่งซื้อ: GET /api/v1/orders, GET /api/v1/orders/:id ===== -->
+        <section class="panel requires-auth" aria-labelledby="orders-title">
+          <div class="panel-head">
+            <h2 id="orders-title">คำสั่งซื้อ</h2>
+            <button type="button" id="orders-refresh" class="btn btn-ghost btn-small">โหลดใหม่</button>
+          </div>
+          <p class="hint" id="orders-hint"></p>
+          <div id="orders-status" class="status" role="status" aria-live="polite"></div>
+          <ul id="order-list" class="order-list"></ul>
+        </section>
+      </div>
+
+      <aside class="side">
+        <!-- ===== แสดงเมื่อยังไม่ได้เข้าสู่ระบบ ===== -->
+        <section class="panel guest-only" aria-labelledby="guest-title">
+          <h2 id="guest-title">เข้าสู่ระบบเพื่อสั่งอาหาร</h2>
+          <p class="hint">ดูเมนูได้ทุกคน ส่วนการสั่งอาหารและดูคำสั่งซื้อต้องเข้าสู่ระบบก่อน</p>
+          <div class="form-actions">
+            <button type="button" id="guest-login" class="btn btn-primary">เข้าสู่ระบบ</button>
+          </div>
+        </section>
+
+        <!-- ===== ตะกร้า: POST /api/v1/orders (โจทย์ 1) ===== -->
+        <section class="panel requires-auth" aria-labelledby="cart-title">
+          <h2 id="cart-title">ตะกร้า</h2>
+          <p class="hint" id="cart-empty">ยังไม่มีรายการ กด "ใส่ตะกร้า" ที่เมนู</p>
+          <ul id="cart-list" class="cart-list"></ul>
+          <div id="cart-summary" hidden>
+            <div class="cart-total">
+              <span>ยอดรวมโดยประมาณ</span>
+              <span id="cart-total"></span>
+            </div>
+            <p class="form-error" id="cart-error" role="alert"></p>
+            <div class="form-actions">
+              <button type="button" id="cart-submit" class="btn btn-primary">สั่งอาหาร</button>
+              <button type="button" id="cart-clear" class="btn btn-ghost">ล้างตะกร้า</button>
+            </div>
+            <p class="field-hint">ยอดจริงคำนวณที่เซิร์ฟเวอร์จากราคาในฐานข้อมูล</p>
+          </div>
+        </section>
+
+        <!-- ===== บันทึกการเรียก API: ดูว่าแต่ละปุ่มเรียก endpoint ไหนและได้ status อะไร ===== -->
+        <section class="panel" aria-labelledby="log-title">
+          <div class="panel-head">
+            <h2 id="log-title">บันทึกการเรียก API</h2>
+            <button type="button" id="log-clear" class="btn btn-ghost btn-small">ล้าง</button>
+          </div>
+          <ul id="api-log" class="api-log"></ul>
+        </section>
+      </aside>
+    </main>
+
+    <!-- ===== รายละเอียดคำสั่งซื้อ: GET /api/v1/orders/:id, PATCH /api/v1/orders/:id/status (โจทย์ 2) ===== -->
+    <dialog id="order-dialog" aria-labelledby="order-dialog-title">
+      <div class="dialog-head">
+        <h2 id="order-dialog-title">คำสั่งซื้อ</h2>
+        <button type="button" id="order-dialog-close" class="btn btn-ghost btn-small" aria-label="ปิด">✕</button>
+      </div>
+      <div id="order-dialog-status" class="status" role="status" aria-live="polite"></div>
+      <div id="order-detail"></div>
+      <form id="status-form" class="status-form" novalidate hidden>
+        <label class="sr-only" for="status-select">สถานะใหม่</label>
+        <select id="status-select">
+          <option value="pending">รอรับออเดอร์</option>
+          <option value="preparing">กำลังทำ</option>
+          <option value="delivered">ส่งแล้ว</option>
+          <option value="cancelled">ยกเลิก</option>
+        </select>
+        <button type="submit" id="status-submit" class="btn btn-primary btn-small">เปลี่ยนสถานะ</button>
+      </form>
+      <p class="field-hint" id="status-hint"></p>
+      <p class="form-error" id="status-error" role="alert"></p>
+    </dialog>
+
+    <!-- ===== เลือกผู้ใช้จำลอง: POST /api/v1/auth/demo-login ===== -->
+    <dialog id="auth-dialog" aria-labelledby="auth-title">
+      <div class="dialog-head">
+        <h2 id="auth-title">เข้าสู่ระบบ</h2>
+        <button type="button" id="auth-close" class="btn btn-ghost btn-small" aria-label="ปิด">✕</button>
+      </div>
+      <p class="hint">เลือกผู้ใช้จำลองเพื่อรับ JWT ตาม role</p>
+      <div class="user-choices">
+        <button type="button" class="user-choice" data-user="somchai">สมชาย <span class="role-badge">customer</span></button>
+        <button type="button" class="user-choice" data-user="somying">สมหญิง <span class="role-badge">customer</span></button>
+        <button type="button" class="user-choice" data-user="staff">พนักงานครัว <span class="role-badge">staff</span></button>
+        <button type="button" class="user-choice" data-user="admin">ผู้ดูแลระบบ <span class="role-badge">admin</span></button>
+      </div>
+      <p class="form-error" id="auth-error" role="alert"></p>
+    </dialog>
+
+    <div id="toasts" class="toasts" aria-live="polite"></div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
