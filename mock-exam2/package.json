@@ -1,0 +1,17 @@
+{
+  "name": "mock-exam2",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ข้อสอบจำลองปลายภาค ส่วนที่ 2 (รูปแบบเดียวกับกลางภาค)",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test": "jest --runInBand",
+    "test:provided": "jest --runInBand tests/provided.test.js",
+    "grade": "node grader/grade.js"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testPathIgnorePatterns": ["/node_modules/", "/grader/"]
+  }
+}

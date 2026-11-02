@@ -11,7 +11,7 @@
   },
   "jest": {
     "testEnvironment": "node",
-    "testPathIgnorePatterns": ["/node_modules/", "/solution/"]
+    "testPathIgnorePatterns": ["/node_modules/", "/solution/", "/mock-exam2/", "/exam-reference/"]
   },
   "dependencies": {
     "express": "^4.19.2",
