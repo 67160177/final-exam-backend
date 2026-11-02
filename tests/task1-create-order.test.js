@@ -1,6 +1,7 @@
 // เทสต์ตรวจโจทย์ที่ 1: POST /api/v1/orders (ห้ามแก้ไฟล์นี้)
-const request = require("supertest");
-const app = require("../app");
+// ไฟล์นี้ใช้เป็นตัวอย่างอ่านรูปแบบการเขียนเทสต์ได้ด้วย (wk09)
+const request = require("supertest"); // ยิง HTTP request ใส่ app ได้โดยไม่ต้องเปิดพอร์ตจริง
+const app = require("../app"); // import app (ไม่ใช่ server.js) ตามที่แยกไว้ใน wk09 3.2
 const { pool } = require("../db");
 const { resetDatabase, tokenFor } = require("./helpers/setup");
 
@@ -9,25 +10,34 @@ async function countRows(table) {
   return total;
 }
 
+// describe = จัดกลุ่มเทสต์ / test (หรือ it) = เทสต์หนึ่งกรณี
 describe("โจทย์ที่ 1: POST /api/v1/orders", () => {
   const customerToken = tokenFor("customer");
 
+  // ⭐⭐ [ออกสอบ wk09 2.5] beforeEach รันก่อน "ทุก" test: รีเซ็ตฐานข้อมูลให้แต่ละ test เริ่มจากสถานะเดียวกัน
+  // (test isolation) ถ้าไม่ทำ ออเดอร์ที่ test ก่อนหน้าสร้างไว้จะทำให้การนับแถวของ test ถัดไปผิด
   beforeEach(async () => {
     await resetDatabase();
   });
 
+  // ⭐ [ออกสอบ wk09 2.5] afterAll รัน "ครั้งเดียว" หลัง test สุดท้าย: ปิด pool
+  // ถ้าไม่ปิด connection ยังค้างอยู่ Jest จะไม่จบและเตือน "open handles"
   afterAll(async () => {
     await pool.end();
   });
 
+  // ⭐ [ออกสอบ wk09 2.3] Arrange-Act-Assert: เตรียมข้อมูล -> เรียกสิ่งที่ทดสอบ -> ตรวจผล
   test("ไม่มี token ต้องได้ 401", async () => {
+    // Act: ไม่ใส่ .set("Authorization", ...) = ไม่มี token
     const res = await request(app)
       .post("/api/v1/orders")
       .send({ items: [{ menuItemId: 1, quantity: 1 }] });
 
+    // Assert: toBe ใช้เทียบค่า primitive ด้วย ===
     expect(res.status).toBe(401);
   });
 
+  // test.each รันเทสต์เดียวกันซ้ำกับข้อมูลหลายชุด (%s จะถูกแทนด้วยค่าแรกของแต่ละแถว)
   test.each([
     ["ไม่มี items", {}],
     ["items เป็น array ว่าง", { items: [] }],
@@ -58,6 +68,8 @@ describe("โจทย์ที่ 1: POST /api/v1/orders", () => {
       });
 
     expect(res.status).toBe(201);
+    // ⭐ [ออกสอบ wk09 2.4] toMatchObject ตรวจเฉพาะ field ที่ระบุ (field อื่นอย่าง id, createdAt ไม่สนใจ)
+    // ต่างจาก toEqual ที่ object ต้องตรงกันทุก field
     expect(res.body.data).toMatchObject({
       customerName: "สมชาย",
       status: "pending",
@@ -83,6 +95,8 @@ describe("โจทย์ที่ 1: POST /api/v1/orders", () => {
     expect(items[0]).toMatchObject({ menu_item_id: 2, quantity: 3 });
   });
 
+  // ⭐⭐ [ออกสอบ wk05 4] วิธีพิสูจน์ว่า transaction ทำงาน: นับแถวก่อนและหลัง ต้องเท่าเดิม
+  // ตรวจแค่ status 404 ไม่พอ เพราะโค้ดที่ไม่มี rollback ก็อาจตอบ 404 ได้ แต่ทิ้ง orders ค้างไว้
   test("เมนูที่ไม่มีอยู่จริงต้องได้ 404 MENU_NOT_FOUND และไม่มีข้อมูลถูกบันทึก", async () => {
     const ordersBefore = await countRows("orders");
     const itemsBefore = await countRows("order_items");
